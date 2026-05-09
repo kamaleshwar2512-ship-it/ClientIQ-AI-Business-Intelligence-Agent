@@ -1,0 +1,177 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ClientIQ — AI Business Intelligence Agent</title>
+  <meta name="description"
+    content="Autonomous AI agent that researches companies and startup ideas using live web data to generate professional BI reports." />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link
+    href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap"
+    rel="stylesheet" />
+  <link rel="stylesheet" href="/static/style.css" />
+</head>
+
+<body>
+
+  <!-- ── NAVBAR ─────────────────────────────────────────────── -->
+  <nav class="navbar">
+    <div class="nav-brand">
+      <span class="brand-icon">⚡</span>
+      <span class="brand-name">Client<span class="brand-accent">IQ</span></span>
+    </div>
+    <div class="nav-badge">AI-Powered BI Agent</div>
+  </nav>
+
+  <!-- ── HERO ───────────────────────────────────────────────── -->
+  <header class="hero" id="hero">
+    <div class="hero-glow"></div>
+    <div class="hero-content">
+      <div class="hero-chip">🤖 Powered by Groq LLaMA 3.3 70B + ReAct</div>
+      <h1 class="hero-title">Business Intelligence<br /><span class="gradient-text">at AI Speed</span></h1>
+      <p class="hero-sub">Paste a meeting transcript or describe your startup idea. ClientIQ browses the live web,
+        researches competitors, and generates a consulting-grade report in minutes.</p>
+      <div class="hero-stats">
+        <div class="stat"><span class="stat-num">9+</span><span class="stat-lbl">Research Sections</span></div>
+        <div class="stat-divider"></div>
+        <div class="stat"><span class="stat-num">3</span><span class="stat-lbl">Live Web Tools</span></div>
+        <div class="stat-divider"></div>
+        <div class="stat"><span class="stat-num">5min</span><span class="stat-lbl">Avg. Report Time</span></div>
+      </div>
+      <a href="#app" class="cta-btn" onclick="scrollToApp()">Start Research →</a>
+    </div>
+    <div class="hero-visual">
+      <div class="report-preview">
+        <div class="rp-header"><span class="rp-dot red"></span><span class="rp-dot yellow"></span><span
+            class="rp-dot green"></span><span class="rp-title">BI_Report_Infosys.md</span></div>
+        <div class="rp-body">
+          <div class="rp-line h1">BUSINESS INTELLIGENCE REPORT</div>
+          <div class="rp-line label">Company: Infosys Ltd</div>
+          <div class="rp-line label">Industry: IT Services &amp; Consulting</div>
+          <div class="rp-spacer"></div>
+          <div class="rp-line h2">## 1. Company Overview</div>
+          <div class="rp-line text">Infosys is a global leader in IT services with $18.6B revenue...</div>
+          <div class="rp-line text">Headquarters: Bengaluru, India · Founded: 1981...</div>
+          <div class="rp-spacer"></div>
+          <div class="rp-line h2">## 4. Competitor Analysis</div>
+          <div class="rp-line text">TCS · Wipro · HCL Tech · Accenture · Cognizant...</div>
+          <div class="rp-spacer"></div>
+          <div class="rp-line h2">## 7. SWOT Analysis</div>
+          <div class="rp-line chip green">✓ Strengths</div>
+          <div class="rp-line chip red">⚠ Threats</div>
+          <div class="rp-line chip yellow">→ Opportunities</div>
+          <div class="rp-line blink">_</div>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <!-- ── MAIN APP ────────────────────────────────────────────── -->
+  <main class="app-section" id="app">
+
+    <!-- STEP 1: CONFIG -->
+    <section class="card config-card" id="config-section">
+      <div class="card-header">
+        <span class="step-badge">01</span>
+        <h2>Configure Your Research</h2>
+      </div>
+
+
+      <div class="field-group">
+        <label>Research Mode</label>
+        <div class="mode-tabs">
+          <button class="mode-tab active" id="tab-company" onclick="setMode('company')">
+            <span class="mode-icon">🏢</span>
+            <span class="mode-label">Company BI Report</span>
+            <span class="mode-desc">Analyze an existing company from a meeting transcript</span>
+          </button>
+          <button class="mode-tab" id="tab-startup" onclick="setMode('startup')">
+            <span class="mode-icon">🚀</span>
+            <span class="mode-label">Startup Research</span>
+            <span class="mode-desc">Research a new business idea before you launch</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- Input Area -->
+      <div class="field-group" id="input-section">
+        <label id="input-label">Meeting Transcript <span class="required">*</span></label>
+
+        <!-- Demo buttons -->
+        <div class="demo-chips" id="demo-chips-company">
+          <span class="demo-label">Try a demo:</span>
+          <button class="demo-chip" onclick="loadDemo('infosys')">Infosys</button>
+          <button class="demo-chip" onclick="loadDemo('zepto')">Zepto</button>
+          <button class="demo-chip" onclick="loadDemo('razorpay')">Razorpay</button>
+        </div>
+        <div class="demo-chips hidden" id="demo-chips-startup">
+          <span class="demo-label">Try a demo:</span>
+          <button class="demo-chip" onclick="loadDemo('textile')">Textile Business</button>
+          <button class="demo-chip" onclick="loadDemo('edtech')">EdTech Platform</button>
+          <button class="demo-chip" onclick="loadDemo('food')">Organic Food D2C</button>
+        </div>
+
+        <textarea id="main-input" rows="7" placeholder="Paste your client meeting transcript here..."></textarea>
+        <p class="char-count" id="char-count">0 characters</p>
+      </div>
+
+      <button class="run-btn" id="run-btn" onclick="startResearch()">
+        <span class="run-icon">⚡</span>
+        <span id="run-btn-label">Start Research</span>
+      </button>
+    </section>
+
+    <!-- STEP 2: PROGRESS -->
+    <section class="card progress-card hidden" id="progress-section">
+      <div class="card-header">
+        <span class="step-badge active">02</span>
+        <h2>Research In Progress</h2>
+        <div class="spinner"></div>
+      </div>
+      <div class="progress-bar-wrap">
+        <div class="progress-bar" id="progress-bar"></div>
+      </div>
+      <div class="progress-status" id="progress-status">Initializing agent...</div>
+      <div class="log-box" id="log-box"></div>
+    </section>
+
+    <!-- STEP 3: REPORT -->
+    <section class="card report-card hidden" id="report-section">
+      <div class="card-header">
+        <span class="step-badge done">03</span>
+        <h2 id="report-title">Research Complete</h2>
+        <div class="report-actions">
+          <button class="action-btn" onclick="copyReport()">📋 Copy</button>
+          <button class="action-btn primary" onclick="downloadReport()">⬇ Download .md</button>
+        </div>
+      </div>
+      <div class="report-meta" id="report-meta"></div>
+
+      <!-- Tabs -->
+      <div class="report-tabs">
+        <button class="rtab active" id="rtab-preview" onclick="showTab('preview')">Preview</button>
+        <button class="rtab" id="rtab-raw" onclick="showTab('raw')">Raw Markdown</button>
+      </div>
+      <div id="tab-preview" class="tab-content">
+        <div class="report-rendered" id="report-rendered"></div>
+      </div>
+      <div id="tab-raw" class="tab-content hidden">
+        <pre class="report-raw" id="report-raw"></pre>
+      </div>
+
+      <button class="run-btn secondary" onclick="resetApp()">↺ New Research</button>
+    </section>
+
+  </main>
+
+  <!-- ── FOOTER ─────────────────────────────────────────────── -->
+  <footer class="footer">
+    <p>ClientIQ · Built with Groq + LLaMA 3.3 70B · ReAct Architecture · Live Web Research</p>
+  </footer>
+
+  <script src="/static/app.js"></script>
+</body>
+
+</html>
