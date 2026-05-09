@@ -144,7 +144,8 @@
         <h2 id="report-title">Research Complete</h2>
         <div class="report-actions">
           <button class="action-btn" onclick="copyReport()">📋 Copy</button>
-          <button class="action-btn primary" onclick="downloadReport()">⬇ Download .md</button>
+          <button class="action-btn" onclick="downloadReport('md')">⬇ Download .md</button>
+          <button class="action-btn excel" id="btn-download-xlsx" onclick="downloadReport('xlsx')">📊 Download Excel</button>
         </div>
       </div>
       <div class="report-meta" id="report-meta"></div>
@@ -159,6 +160,27 @@
       </div>
       <div id="tab-raw" class="tab-content hidden">
         <pre class="report-raw" id="report-raw"></pre>
+      </div>
+
+      <!-- Email delivery section -->
+      <div class="email-section" id="email-section">
+        <div class="email-section-header">
+          <span class="email-icon">✉️</span>
+          <h3>Send Report to Email</h3>
+        </div>
+        <p class="email-desc">Receive the Excel report directly in your inbox as an attachment. Enter multiple emails separated by commas.</p>
+        <div class="email-input-row">
+          <input
+            type="text"
+            id="email-input"
+            placeholder="e.g. alice@gmail.com, bob@company.com"
+            autocomplete="email"
+          />
+          <button class="send-email-btn" id="send-email-btn" onclick="sendEmail()">
+            <span id="send-email-label">📨 Send Report</span>
+          </button>
+        </div>
+        <div class="email-status" id="email-status"></div>
       </div>
 
       <button class="run-btn secondary" onclick="resetApp()">↺ New Research</button>

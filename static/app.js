@@ -3,6 +3,10 @@
 // ── State ────────────────────────────────────────────────────
 let currentMode = 'company';
 let reportText  = '';
+let excelPath   = '';   // server-side path to generated .xlsx
+let reportTitle = '';   // friendly report title for email subject
+let reportMeta  = {};   // raw meta from agent (company_info / idea_info)
+let reportMode  = 'company'; // 'company' | 'startup'
 let progressPct = 0;
 
 const SECTION_COUNT_COMPANY = 10;
@@ -204,16 +208,27 @@ async function startResearch() {
       evtSrc.close();
       setProgress(100, 'Report complete!');
       reportText = msg.data.report;
-      const meta  = msg.data.meta;
-      const mode  = msg.data.mode;
+      excelPath  = msg.data.excel_path || '';
+      reportMeta = msg.data.meta  || {};
+      reportMode = msg.data.mode  || 'company';
+      const meta = msg.data.meta;
+      const mode = msg.data.mode;
 
-      document.getElementById('report-title').textContent =
-        mode === 'company' ? `BI Report — ${meta.company_name || 'Company'}` : `Startup Report`;
+      reportTitle = mode === 'company'
+        ? `BI Report — ${meta.company_name || 'Company'}`
+        : `Startup Research Report`;
+
+      document.getElementById('report-title').textContent = reportTitle;
 
       buildMetaChips(meta, mode);
       document.getElementById('report-rendered').innerHTML = mdToHtml(reportText);
       document.getElementById('report-raw').textContent = reportText;
       showTab('preview');
+
+      // Show/hide Excel button depending on availability
+      const xlsxBtn = document.getElementById('btn-download-xlsx');
+      if (xlsxBtn) xlsxBtn.style.display = excelPath ? '' : 'none';
+
       setTimeout(() => showCard('report-section'), 600);
 
       btn.disabled = false;
@@ -247,7 +262,18 @@ function copyReport() {
   });
 }
 
-function downloadReport() {
+function downloadReport(format = 'md') {
+  if (format === 'xlsx') {
+    // Trigger server-side file download for Excel
+    if (!excelPath) { alert('Excel file is not available. Please run a report first.'); return; }
+    // Ask the server to stream the file back
+    const link = document.createElement('a');
+    link.href = `/api/download-excel?path=${encodeURIComponent(excelPath)}`;
+    link.download = '';
+    link.click();
+    return;
+  }
+  // Markdown download (client-side blob)
   if (!reportText) return;
   const blob = new Blob([reportText], { type: 'text/markdown' });
   const a = document.createElement('a');
@@ -258,7 +284,11 @@ function downloadReport() {
 }
 
 function resetApp() {
-  reportText = '';
+  reportText  = '';
+  excelPath   = '';
+  reportTitle = '';
+  reportMeta  = {};
+  reportMode  = 'company';
   progressPct = 0;
   document.getElementById('log-box').innerHTML = '';
   document.getElementById('report-rendered').innerHTML = '';
@@ -267,6 +297,71 @@ function resetApp() {
   document.getElementById('char-count').textContent = '0 characters';
   document.getElementById('run-btn').disabled = false;
   document.getElementById('run-btn-label').textContent = 'Start Research';
+  // Reset email panel
+  const emailInput  = document.getElementById('email-input');
+  const emailStatus = document.getElementById('email-status');
+  const emailBtn    = document.getElementById('send-email-btn');
+  if (emailInput)  emailInput.value = '';
+  if (emailStatus) { emailStatus.textContent = ''; emailStatus.className = 'email-status'; }
+  if (emailBtn)    { emailBtn.disabled = false; document.getElementById('send-email-label').textContent = '📨 Send Report'; }
   showCard('config-section');
   document.getElementById('app').scrollIntoView({ behavior: 'smooth' });
+}
+
+// ── Send Email ────────────────────────────────────────────────
+async function sendEmail() {
+  const emailInput  = document.getElementById('email-input');
+  const btn         = document.getElementById('send-email-btn');
+  const labelEl     = document.getElementById('send-email-label');
+
+  const emailsRaw = emailInput.value.trim();
+  if (!emailsRaw) {
+    showEmailStatus('Please enter at least one email address.', 'error');
+    emailInput.focus();
+    return;
+  }
+  if (!excelPath) {
+    showEmailStatus('No Excel report available yet. Please generate a report first.', 'error');
+    return;
+  }
+
+  btn.disabled = true;
+  labelEl.textContent = '⏳ Sending...';
+  showEmailStatus('Sending your report...', 'loading');
+
+  try {
+    const res = await fetch('/api/send-email', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        emails:     emailsRaw,       // comma-separated string, server splits it
+        excel_path: excelPath,
+        meta:       reportMeta,
+        mode:       reportMode
+      })
+    });
+    const data = await res.json();
+    if (res.ok && data.success) {
+      showEmailStatus(`✅ ${data.message}`, 'success');
+      labelEl.textContent = '✓ Sent!';
+      setTimeout(() => {
+        labelEl.textContent = '📨 Send Report';
+        btn.disabled = false;
+      }, 4000);
+    } else {
+      showEmailStatus(`❌ ${data.error || 'Failed to send email.'}`, 'error');
+      labelEl.textContent = '📨 Send Report';
+      btn.disabled = false;
+    }
+  } catch (err) {
+    showEmailStatus('❌ Could not reach server. Is app.py running?', 'error');
+    labelEl.textContent = '📨 Send Report';
+    btn.disabled = false;
+  }
+}
+
+function showEmailStatus(text, type) {
+  const el = document.getElementById('email-status');
+  el.textContent = text;
+  el.className = `email-status ${type}`;
 }

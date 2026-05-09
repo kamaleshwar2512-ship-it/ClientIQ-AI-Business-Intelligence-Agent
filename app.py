@@ -3,7 +3,7 @@ app.py — Flask Web Server for ClientIQ Frontend
 Exposes REST + SSE endpoints for the HTML UI
 """
 
-import os, json, threading, queue, time, sys
+import os, json, threading, queue, time, sys, re, io
 from flask import Flask, request, jsonify, Response, send_from_directory
 from flask_cors import CORS
 
@@ -66,26 +66,30 @@ def _run_agent(job_id: str, mode: str, input_text: str):
             company_info = result["company_info"]
             sections = result["sections"]
             report_text = report_module.build_report(company_info, sections)
-            path = report_module.save_report(report_text, company_info.get("company_name","Report"), "./reports")
+            md_path   = report_module.save_report(report_text, company_info.get("company_name", "Report"), "./reports")
+            xlsx_path = report_module.save_report_excel(company_info, sections, "./reports")
             _push(job_id, "done", {
-                "report": report_text,
-                "path": path,
-                "meta": company_info,
-                "mode": "company"
+                "report":     report_text,
+                "path":       md_path,
+                "excel_path": xlsx_path,
+                "meta":       company_info,
+                "mode":       "company"
             })
 
         else:  # startup
             _push(job_id, "status", {"text": "Parsing your business idea..."})
             result = ag.run_startup(user_input=input_text)
             idea_info = result["idea_info"]
-            sections = result["sections"]
+            sections  = result["sections"]
             report_text = report_module.build_startup_report(idea_info, sections)
-            path = report_module.save_startup_report(report_text, idea_info.get("business_idea","startup"), "./reports")
+            md_path   = report_module.save_startup_report(report_text, idea_info.get("business_idea", "startup"), "./reports")
+            xlsx_path = report_module.save_startup_report_excel(idea_info, sections, "./reports")
             _push(job_id, "done", {
-                "report": report_text,
-                "path": path,
-                "meta": idea_info,
-                "mode": "startup"
+                "report":     report_text,
+                "path":       md_path,
+                "excel_path": xlsx_path,
+                "meta":       idea_info,
+                "mode":       "startup"
             })
 
     except Exception as e:
@@ -134,6 +138,82 @@ def stream(job_id: str):
 
     return Response(generate(), mimetype="text/event-stream",
                     headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"})
+
+
+@app.route("/api/send-email", methods=["POST"])
+def send_email_route():
+    """
+    POST body:
+      {
+        "emails":     "a@x.com, b@x.com",   # comma-separated string
+        "excel_path": "./reports/...",
+        "meta":       { company_info dict from agent },
+        "mode":       "company" | "startup"
+      }
+    Sends the Excel report to all provided addresses.
+    """
+    from core.email_sender import send_email
+    body       = request.json or {}
+    emails_raw = body.get("emails", "").strip()
+    excel_path = body.get("excel_path", "").strip()
+    meta       = body.get("meta", {})
+    mode       = body.get("mode", "company")
+
+    # Parse comma-separated emails into a list
+    recipient_emails = [e.strip() for e in emails_raw.split(",") if e.strip()]
+    if not recipient_emails:
+        return jsonify({"error": "At least one email address is required."}), 400
+    if not excel_path or not os.path.exists(excel_path):
+        return jsonify({"error": "Excel report file not found. Please generate a report first."}), 404
+
+    # Adapt agent meta → new company_info format
+    if mode == "company":
+        company_info = {
+            "Company":  meta.get("company_name",  "Unknown"),
+            "Website":  meta.get("website_url",   "N/A"),
+            "Industry": meta.get("industry",      "N/A"),
+            "Location": meta.get("other_details", "N/A") or "N/A",
+        }
+    else:
+        company_info = {
+            "Company":  meta.get("business_idea", "Startup"),
+            "Website":  "N/A",
+            "Industry": meta.get("industry",      "N/A"),
+            "Location": meta.get("geography",     "India"),
+        }
+
+    try:
+        send_email(excel_path, company_info, recipient_emails)
+        return jsonify({
+            "success": True,
+            "message": f"Report sent to {', '.join(recipient_emails)} successfully!"
+        })
+    except EnvironmentError as e:
+        return jsonify({"error": str(e)}), 500
+    except FileNotFoundError as e:
+        return jsonify({"error": str(e)}), 404
+    except Exception as e:
+        return jsonify({"error": f"Failed to send email: {str(e)}"}), 500
+
+
+@app.route("/api/download-excel")
+def download_excel():
+    """GET /api/download-excel?path=./reports/xxx.xlsx — streams the Excel file."""
+    from flask import send_file
+    excel_path = request.args.get("path", "").strip()
+    if not excel_path or not os.path.exists(excel_path):
+        return jsonify({"error": "File not found."}), 404
+    # Security: ensure the path is inside ./reports/
+    abs_path    = os.path.abspath(excel_path)
+    reports_dir = os.path.abspath("./reports")
+    if not abs_path.startswith(reports_dir):
+        return jsonify({"error": "Access denied."}), 403
+    return send_file(
+        abs_path,
+        as_attachment=True,
+        download_name=os.path.basename(abs_path),
+        mimetype="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+    )
 
 
 if __name__ == "__main__":

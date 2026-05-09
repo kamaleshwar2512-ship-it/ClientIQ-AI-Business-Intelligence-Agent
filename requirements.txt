@@ -7,3 +7,4 @@ lxml
 flask
 flask-cors
 python-dotenv
+openpyxl
